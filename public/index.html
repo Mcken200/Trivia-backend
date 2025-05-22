@@ -16,29 +16,30 @@
     <script>
     window.addEventListener('DOMContentLoaded', () => {
         const socket = io();
-
         console.log('Connected to server with ID:', socket.id);
 
-      socket.on("host_start_game", (data) => {
-        console.log("Received host_start_game on display with data:", data);
-        if (data && data.joinUrl) {
-          showQRCode(data.joinUrl);
-        } else {
-          console.warn("No joinUrl in host_start_game payload");
-        }
-      });
-        });
+        document.getElementById('startBtn').onclick = () => {
+            const gameId = Math.floor(1000 + Math.random() * 9000).toString();
+            socket.emit('createGame', gameId);
+            
+            const joinUrl = `${window.location.origin}/join.html?gameId=${gameId}`;
+            showQRCode(joinUrl);
+            
+            socket.emit('host_start_game', {
+                gameId,
+                joinUrl
+            });
+        };
 
-      function showQRCode(joinUrl) {
-        console.log("Showing QR code for:", joinUrl);
-        const qrCodeContainer = document.getElementById("qrContainer");
-        qrCodeContainer.innerHTML = ''; // Clear any previous QR
-        new QRCode(qrCodeContainer, {
-          text: joinUrl,
-          width: 256,
-          height: 256
-        });
-      }
+        function showQRCode(joinUrl) {
+            console.log("Showing QR code for:", joinUrl);
+            const qrCodeContainer = document.getElementById("qrContainer");
+            qrCodeContainer.innerHTML = ''; // Clear any previous QR
+            new QRCode(qrCodeContainer, {
+                text: joinUrl,
+                width: 256,
+                height: 256
+            });
         }
     });
     </script>
