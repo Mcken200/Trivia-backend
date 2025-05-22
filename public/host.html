@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Host Trivia Game</title>
+</head>
+  <body>
+    <h1>Host Screen</h1>
+    <button id="startBtn">Start Game</button>
+    <h2>Players Joined:</h2>
+    <ul id="playerList"></ul>
+
+    <div id="qrContainer"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const playerList = document.getElementById('playerList');
+      const storedGameId = localStorage.getItem('gameId');
+
+      // If there's a saved game, rejoin the room
+      if (storedGameId) {
+        socket.emit('createGame', storedGameId);
+        console.log('Rejoined game room:', storedGameId);
+      }
+
+      document.getElementById('startBtn').onclick = () => {
+        const gameId = Math.floor(1000 + Math.random() * 9000).toString();
+        socket.emit('createGame', gameId);
+        alert('Game started! Code: ' + gameId);
+        localStorage.setItem('gameId', gameId);
+
+        //NEW: Tell display to show QR code
+        console.log('Emitting host_start_game with:', {
+          gameId,
+          joinUrl: `${window.location.origin}/join.html?gameId=${gameId}`
+        });
+        socket.emit('host_start_game', {
+          gameId,
+          joinUrl: `${window.location.origin}/join.html?gameId=${gameId}`
+        });
+        // Generate QR code in the corner
+        const qrContainer = document.getElementById('qrContainer');
+        qrContainer.innerHTML = ''; // clear previous QR if any
+        new QRCode(qrContainer, {
+          text: `${window.location.origin}/join.html?gameId=${gameId}`,
+          width: 128,
+          height: 128
+        });
+      };
+
+      // When a player joins, add them to the list
+      socket.on('playerJoined', ({ name }) => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        playerList.appendChild(li);
+      });
+    </script>
+  </body>
+</html>
