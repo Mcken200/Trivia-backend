@@ -3,45 +3,43 @@
 <head>
   <title>Trivia Game</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    #startBtn {
+      display: none; /* hide button */
+    }
+  </style>
 </head>
-  <body>
-    <div id="qrContainer" style="position: fixed; top: 1rem; right: 1rem;"></div>
+<body>
+  <div id="qrContainer" style="position: fixed; top: 1rem; right: 1rem;"></div>
+  <h1>Welcome to the Trivia Game!</h1>
+  <p id="statusText">Waiting for a host to start the game...</p>
+  <button id="startBtn">Start Game</button>
 
-    <h1>Welcome to the Trivia Game!</h1>
-    <p>Connecting to the server...</p>
-    <button id="startBtn">Start Game</button>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
     window.addEventListener('DOMContentLoaded', () => {
-        const socket = io();
-        console.log('Connected to server with ID:', socket.id);
+      const socket = io();
+      const statusText = document.getElementById('statusText');
 
-        document.getElementById('startBtn').onclick = () => {
-            const gameId = Math.floor(1000 + Math.random() * 9000).toString();
-            socket.emit('createGame', gameId);
-            
-            const joinUrl = `${window.location.origin}/join.html?gameId=${gameId}`;
-            showQRCode(joinUrl);
-            
-            socket.emit('host_start_game', {
-                gameId,
-                joinUrl
-            });
-        };
+      console.log('Connected to server');
 
-        function showQRCode(joinUrl) {
-            console.log("Showing QR code for:", joinUrl);
-            const qrCodeContainer = document.getElementById("qrContainer");
-            qrCodeContainer.innerHTML = ''; // Clear any previous QR
-            new QRCode(qrCodeContainer, {
-                text: joinUrl,
-                width: 256,
-                height: 256
-            });
-        }
+      // Listen for host event
+      socket.on('host_start_game', ({ gameId, joinUrl }) => {
+        statusText.textContent = `Game ${gameId} is now live!`;
+        showQRCode(joinUrl);
+      });
+
+      function showQRCode(url) {
+        console.log("Displaying QR for:", url);
+        const qrContainer = document.getElementById("qrContainer");
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+          text: url,
+          width: 256,
+          height: 256
+        });
+      }
     });
-    </script>
-  </body>
+  </script>
+</body>
 </html>

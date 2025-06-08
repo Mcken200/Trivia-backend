@@ -2,58 +2,63 @@
 <html>
 <head>
   <title>Host Trivia Game</title>
+  <style>
+    .player-connected {
+      opacity: 1;
+    }
+    .player-disconnected {
+      opacity: 0.5;
+      font-style: italic;
+    }
+  </style>
 </head>
-  <body>
-    <h1>Host Screen</h1>
-    <button id="startBtn">Start Game</button>
-    <h2>Players Joined:</h2>
-    <ul id="playerList"></ul>
+<body>
+  <h1>Host Screen</h1>
+  <button id="startBtn">Start Game</button>
+  <h2>Players Joined:</h2>
+  <ul id="playerList"></ul>
 
-    <div id="qrContainer"></div>
+  <div id="qrContainer"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-      const socket = io();
-      const playerList = document.getElementById('playerList');
-      const storedGameId = localStorage.getItem('gameId');
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const socket = io();
+    const playerList = document.getElementById('playerList');
 
-      // If there's a saved game, rejoin the room
-      if (storedGameId) {
-        socket.emit('createGame', storedGameId);
-        console.log('Rejoined game room:', storedGameId);
-      }
+    // ✅ Your actual deployed React frontend URL
+    const FRONTEND_URL = 'https://trivia-frontend-vite.dylanmckenzie07.replit.app';
 
-      document.getElementById('startBtn').onclick = () => {
-        const gameId = Math.floor(1000 + Math.random() * 9000).toString();
-        socket.emit('createGame', gameId);
-        alert('Game started! Code: ' + gameId);
-        localStorage.setItem('gameId', gameId);
+    document.getElementById('startBtn').onclick = () => {
+      const gameId = Math.floor(1000 + Math.random() * 9000).toString();
+      socket.emit('createGame', gameId);
+      localStorage.setItem('gameId', gameId);
 
-        //NEW: Tell display to show QR code
-        console.log('Emitting host_start_game with:', {
-          gameId,
-          joinUrl: `${window.location.origin}/join.html?gameId=${gameId}`
-        });
-        socket.emit('host_start_game', {
-          gameId,
-          joinUrl: `${window.location.origin}/join.html?gameId=${gameId}`
-        });
-        // Generate QR code in the corner
-        const qrContainer = document.getElementById('qrContainer');
-        qrContainer.innerHTML = ''; // clear previous QR if any
-        new QRCode(qrContainer, {
-          text: `${window.location.origin}/join.html?gameId=${gameId}`,
-          width: 128,
-          height: 128
-        });
-      };
+      const joinUrl = `${FRONTEND_URL}/join?gameId=${gameId}`;
+      socket.emit('host_start_game', { gameId, joinUrl });
 
-      // When a player joins, add them to the list
-      socket.on('playerJoined', ({ name }) => {
+      const qrContainer = document.getElementById('qrContainer');
+      qrContainer.innerHTML = '';
+      new QRCode(qrContainer, {
+        text: joinUrl,
+        width: 128,
+        height: 128
+      });
+
+      // ❌ Removed window.open to avoid insecure tab error
+      // window.open(`/qr/${gameId}`, '_blank');
+    };
+
+    socket.on('playerListUpdate', (playerMap) => {
+      playerList.innerHTML = '';
+      for (const id in playerMap) {
+        const { name, connected } = playerMap[id];
         const li = document.createElement('li');
         li.textContent = name;
+        li.className = connected ? 'player-connected' : 'player-disconnected';
         playerList.appendChild(li);
-      });
-    </script>
-  </body>
+      }
+    });
+  </script>
+</body>
 </html>
