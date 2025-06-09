@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const gamePlayers = {};
 const deviceToGameMap = {};
 const socketToDeviceMap = {};
+let latestGameId = null;
 
 const app = express();
 const server = http.createServer(app);
@@ -27,14 +28,15 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 👉 Serve venue screen (real-time HTML)
 app.get('/', (req, res) => {
-  res.send('Trivia backend is running!');
+  res.sendFile(path.join(__dirname, 'public', 'venue.html'));
 });
 
-// ✅ Hardcoded URL to Vercel frontend deployment
+// 👉 QR generation (optional, for static viewing or debug)
 app.get('/qr/:gameId', async (req, res) => {
   const gameId = req.params.gameId;
-  const url = `https://trivia-frontend-y1m4.vercel.app/join?gameId=${gameId}`;
+  const url = `https://trivia-frontend-iota.vercel.app/join?gameId=${gameId}`;
   try {
     const qr = await QRCode.toDataURL(url);
     res.send(`
@@ -50,11 +52,20 @@ app.get('/qr/:gameId', async (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('createGame', (gameId) => {
+  // ✅ Host starts a game
+  socket.on('createGame', async (gameId) => {
+    latestGameId = gameId;
     socket.join(gameId);
     console.log(`Host ${socket.id} created game ${gameId}`);
+
+    const joinUrl = `https://trivia-frontend-iota.vercel.app/join?gameId=${gameId}`;
+    const qrData = await QRCode.toDataURL(joinUrl);
+
+    // ✅ Emit to all "venue" clients to show the new QR
+    io.emit('showQRCode', { gameId, joinUrl, qrData });
   });
 
+  // ✅ Host broadcasts game start
   socket.on('host_start_game', ({ gameId, joinUrl }) => {
     console.log(`Host ${socket.id} started the game ${gameId}`);
     io.emit('host_start_game', { gameId, joinUrl });
@@ -93,16 +104,13 @@ io.on('connection', (socket) => {
       gamePlayers[code] &&
       gamePlayers[code][deviceId]
     ) {
-      console.log(`[${socket.id}] REJOINING: deviceId=${deviceId}, game=${code}, name=${gamePlayers[code][deviceId].name}`);
-
+      console.log(`[${socket.id}] REJOINING: ${deviceId}, ${code}`);
       gamePlayers[code][deviceId].connected = true;
       deviceToGameMap[deviceId] = code;
       socketToDeviceMap[socket.id] = deviceId;
       socket.join(code);
-
       io.to(code).emit('playerListUpdate', gamePlayers[code]);
     } else {
-      console.log(`[${socket.id}] Failed REJOIN: deviceId=${deviceId}, game=${code}`);
       socket.emit('errorMessage', 'Unable to rejoin');
     }
   });
@@ -118,11 +126,6 @@ io.on('connection', (socket) => {
       gamePlayers[gameId][deviceId]
     ) {
       gamePlayers[gameId][deviceId].connected = false;
-
-      console.log(
-        `[${socket.id}] DISCONNECTED: ${gamePlayers[gameId][deviceId].name || 'Unknown'} (${deviceId}) from game ${gameId}`
-      );
-
       io.to(gameId).emit('playerListUpdate', gamePlayers[gameId]);
     }
 
