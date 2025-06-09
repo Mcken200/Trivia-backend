@@ -4,15 +4,33 @@
   <title>Trivia Game - Venue Display</title>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 2rem; }
-    img { max-width: 300px; margin-top: 1rem; }
-    .link { margin-top: 1rem; font-size: 1.2rem; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    img {
+      max-width: 300px;
+      margin-top: 1rem;
+    }
+    .link {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+    }
+    .player-list {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+    }
+    .player {
+      margin: 0.5rem 0;
+    }
   </style>
 </head>
 <body>
   <h1>🎉 Waiting for game to start...</h1>
   <div id="qr"></div>
   <div class="link" id="link"></div>
+  <div class="player-list" id="players"></div>
 
   <script>
     const socket = io();
@@ -21,6 +39,18 @@
       document.querySelector('h1').innerText = `Scan to Join Game: ${gameId}`;
       document.getElementById('qr').innerHTML = `<img src="${qrData}" alt="QR Code">`;
       document.getElementById('link').innerHTML = `or go to: <a href="${joinUrl}">${joinUrl}</a>`;
+    });
+
+    socket.on('playerListUpdate', (players) => {
+      const playerListDiv = document.getElementById('players');
+      const entries = Object.values(players);
+      if (entries.length > 0) {
+        playerListDiv.innerHTML =
+          `<h2>🙋‍♂️ Players Joined:</h2>` +
+          entries.map(p => `<div class="player">${p.avatar || '❓'} ${p.name}</div>`).join('');
+      } else {
+        playerListDiv.innerHTML = '';
+      }
     });
   </script>
 </body>
