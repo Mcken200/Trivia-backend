@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Trivia Game - Venue Display</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; }
+    img { max-width: 300px; margin-top: 1rem; }
+    .link { margin-top: 1rem; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>🎉 Waiting for game to start...</h1>
+  <div id="qr"></div>
+  <div class="link" id="link"></div>
+
+  <script>
+    const socket = io();
+
+    socket.on('showQRCode', ({ gameId, joinUrl, qrData }) => {
+      document.querySelector('h1').innerText = `Scan to Join Game: ${gameId}`;
+      document.getElementById('qr').innerHTML = `<img src="${qrData}" alt="QR Code">`;
+      document.getElementById('link').innerHTML = `or go to: <a href="${joinUrl}">${joinUrl}</a>`;
+    });
+  </script>
+</body>
+</html>
