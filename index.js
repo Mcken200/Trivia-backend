@@ -28,12 +28,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 👉 Serve venue screen (real-time HTML)
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'venue.html'));
 });
 
-// 👉 QR generation (optional, for static viewing or debug)
 app.get('/qr/:gameId', async (req, res) => {
   const gameId = req.params.gameId;
   const url = `https://trivia-frontend-iota.vercel.app/join?gameId=${gameId}`;
@@ -52,20 +50,25 @@ app.get('/qr/:gameId', async (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // ✅ Host starts a game
   socket.on('createGame', async (gameId) => {
     latestGameId = gameId;
     socket.join(gameId);
     console.log(`Host ${socket.id} created game ${gameId}`);
 
+    // Track host behind the scenes
+    const hostId = `host-${socket.id}`;
+    if (!gamePlayers[gameId]) gamePlayers[gameId] = {};
+    gamePlayers[gameId][hostId] = { name: '__HOST__', connected: true };
+
+    deviceToGameMap[hostId] = gameId;
+    socketToDeviceMap[socket.id] = hostId;
+
     const joinUrl = `https://trivia-frontend-iota.vercel.app/join?gameId=${gameId}`;
     const qrData = await QRCode.toDataURL(joinUrl);
 
-    // ✅ Emit to all "venue" clients to show the new QR
     io.emit('showQRCode', { gameId, joinUrl, qrData });
   });
 
-  // ✅ Host broadcasts game start
   socket.on('host_start_game', ({ gameId, joinUrl }) => {
     console.log(`Host ${socket.id} started the game ${gameId}`);
     io.emit('host_start_game', { gameId, joinUrl });
@@ -94,7 +97,7 @@ io.on('connection', (socket) => {
     socket.join(code);
 
     console.log(`[${socket.id}] JOINED: ${name} (${deviceId}) to game ${code}`);
-    io.to(code).emit('playerListUpdate', gamePlayers[code]);
+    emitFilteredPlayerList(code);
   });
 
   socket.on('rejoinGame', ({ deviceId, code }) => {
@@ -109,7 +112,7 @@ io.on('connection', (socket) => {
       deviceToGameMap[deviceId] = code;
       socketToDeviceMap[socket.id] = deviceId;
       socket.join(code);
-      io.to(code).emit('playerListUpdate', gamePlayers[code]);
+      emitFilteredPlayerList(code);
     } else {
       socket.emit('errorMessage', 'Unable to rejoin');
     }
@@ -126,11 +129,23 @@ io.on('connection', (socket) => {
       gamePlayers[gameId][deviceId]
     ) {
       gamePlayers[gameId][deviceId].connected = false;
-      io.to(gameId).emit('playerListUpdate', gamePlayers[gameId]);
+      emitFilteredPlayerList(gameId);
     }
 
     delete socketToDeviceMap[socket.id];
   });
+
+  function emitFilteredPlayerList(gameId) {
+    if (!gamePlayers[gameId]) return;
+
+    const filtered = Object.fromEntries(
+      Object.entries(gamePlayers[gameId]).filter(
+        ([deviceId, player]) => player.name !== '__HOST__'
+      )
+    );
+
+    io.to(gameId).emit('playerListUpdate', filtered);
+  }
 });
 
 server.listen(PORT, () => {
