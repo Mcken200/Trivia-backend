@@ -26,7 +26,9 @@
     const socket = io();
     const playerList = document.getElementById('playerList');
 
-    // ✅ Your actual deployed React frontend URL
+    // ✅ Identify this client as a host
+    socket.emit('identifyAs', 'host');
+
     const FRONTEND_URL = 'https://trivia-frontend-vite.dylanmckenzie07.replit.app';
 
     document.getElementById('startBtn').onclick = () => {
@@ -44,9 +46,6 @@
         width: 128,
         height: 128
       });
-
-      // ❌ Removed window.open to avoid insecure tab error
-      // window.open(`/qr/${gameId}`, '_blank');
     };
 
     socket.on('playerListUpdate', (playerMap) => {
