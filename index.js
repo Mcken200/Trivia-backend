@@ -50,6 +50,12 @@ app.get('/qr/:gameId', async (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Let each client identify its role (host, venue, player)
+  socket.on('identifyAs', (role) => {
+    socket.role = role;
+    console.log(`Socket ${socket.id} identified as ${role}`);
+  });
+
   socket.on('createGame', async (gameId) => {
     latestGameId = gameId;
     socket.join(gameId);
@@ -66,7 +72,12 @@ io.on('connection', (socket) => {
     const joinUrl = `https://trivia-frontend-iota.vercel.app/join?gameId=${gameId}`;
     const qrData = await QRCode.toDataURL(joinUrl);
 
-    io.emit('showQRCode', { gameId, joinUrl, qrData });
+    // Send QR code to all connected venue clients
+    io.sockets.sockets.forEach((s) => {
+      if (s.role === 'venue') {
+        s.emit('showQRCode', { gameId, joinUrl, qrData });
+      }
+    });
   });
 
   socket.on('host_start_game', ({ gameId, joinUrl }) => {
