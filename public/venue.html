@@ -35,6 +35,9 @@
   <script>
     const socket = io();
 
+    // ✅ Identify this socket as a 'venue'
+    socket.emit('identifyAs', 'venue');
+
     socket.on('showQRCode', ({ gameId, joinUrl, qrData }) => {
       document.querySelector('h1').innerText = `Scan to Join Game: ${gameId}`;
       document.getElementById('qr').innerHTML = `<img src="${qrData}" alt="QR Code">`;
