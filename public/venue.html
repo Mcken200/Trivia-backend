@@ -35,7 +35,7 @@
   <script>
     const socket = io();
 
-    // 🔧 This tells the backend this tab is a venue screen
+    // ✅ This identifies the venue screen to the backend
     socket.emit('identifyAs', 'venue');
 
     socket.on('showQRCode', ({ gameId, joinUrl, qrData }) => {
