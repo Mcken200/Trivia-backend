@@ -41,6 +41,7 @@
     socket.on('showQRCode', ({ gameId, joinUrl, qrData }) => {
       document.querySelector('h1').innerText = `Scan to Join Game: ${gameId}`;
       document.getElementById('qr').innerHTML = `<img src="${qrData}" alt="QR Code">`;
+      console.log/qrdata
       document.getElementById('link').innerHTML = `or go to: <a href="${joinUrl}">${joinUrl}</a>`;
     });
 
